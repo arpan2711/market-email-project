@@ -16,24 +16,10 @@ load_dotenv()
 
 st.set_page_config(page_title="Portfolio Chat", page_icon="📈")
 
-# first pass at a theme - way too much, scrapped it
-# st.markdown(
-#     """
-#     <style>
-#     .stApp { background-color: #1a0033; color: #39ff14; }
-#     </style>
-#     """,
-#     unsafe_allow_html=True,
-# )
-
-st.markdown(
-    """
-    <style>
-    .stApp { background-color: #0b1e3d; color: #f2f2f2; }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
+# tried inline CSS on .stApp for the theme first, but it only colors the page
+# background - chat message text has its own styles underneath and stayed low
+# contrast. moved the theme into .streamlit/config.toml instead, which
+# actually cascades into the chat bubbles/sidebar/buttons properly.
 
 st.title("Portfolio & Articles Chatbot")
 st.caption("Ask about anything you've saved below - articles or your holdings.")
