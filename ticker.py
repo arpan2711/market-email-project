@@ -16,7 +16,7 @@ DEFAULT_TICKERS = ["AAPL", "MSFT", "TSLA"]
 NEWS_PER_TICKER = 3
 
 
-def print_stock(symbol: str) -> None:
+def format_stock(symbol: str) -> str:
     stock = yf.Ticker(symbol)
     info = stock.fast_info
 
@@ -26,14 +26,20 @@ def print_stock(symbol: str) -> None:
     pct_change = (change / prev_close) * 100
 
     arrow = "^" if change >= 0 else "v"
-    print(f"\n{symbol}  ${price:,.2f}  {arrow} {change:+.2f} ({pct_change:+.2f}%)")
-    print("-" * 40)
-
+    lines = [
+        f"{symbol}  ${price:,.2f}  {arrow} {change:+.2f} ({pct_change:+.2f}%)",
+        "-" * 40,
+    ]
     for item in stock.news[:NEWS_PER_TICKER]:
         content = item.get("content", item)
         title = content.get("title", "Untitled")
         publisher = content.get("provider", {}).get("displayName", "Unknown source")
-        print(f"  - {title} ({publisher})")
+        lines.append(f"  - {title} ({publisher})")
+    return "\n".join(lines)
+
+
+def print_stock(symbol: str) -> None:
+    print(f"\n{format_stock(symbol)}")
 
 
 def main() -> None:
