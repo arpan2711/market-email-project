@@ -1,2 +1,6 @@
 yfinance
 flask
+streamlit
+scikit-learn
+openai
+python-dotenv
