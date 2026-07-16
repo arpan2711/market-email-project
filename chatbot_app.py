@@ -10,7 +10,9 @@ import streamlit as st
 from dotenv import load_dotenv
 
 from deepseek_client import ask
+from pdf_ingest import extract_pdf_text
 from rag_store import RagStore
+from ticker_lookup import company_name
 
 load_dotenv()
 
@@ -28,6 +30,10 @@ if "store" not in st.session_state:
     st.session_state.store = RagStore()
 if "messages" not in st.session_state:
     st.session_state.messages = []
+if "session_tokens" not in st.session_state:
+    st.session_state.session_tokens = 0
+if "session_cost" not in st.session_state:
+    st.session_state.session_cost = 0.0
 
 with st.sidebar:
     st.header("Add knowledge")
@@ -39,6 +45,15 @@ with st.sidebar:
             st.session_state.store.add_document(article_text.strip(), source="article")
             st.success("Article saved")
 
+    pdf_file = st.file_uploader("...or upload a PDF article", type="pdf")
+    if pdf_file is not None:
+        pdf_text = extract_pdf_text(pdf_file)
+        if pdf_text:
+            st.session_state.store.add_document(pdf_text, source="article")
+            st.success(f"Extracted {len(pdf_text)} characters from {pdf_file.name}")
+        else:
+            st.warning("Couldn't pull any text out of that PDF - might be a scanned image.")
+
     with st.form("add_portfolio_form", clear_on_submit=True):
         ticker = st.text_input("Ticker")
         shares = st.number_input("Shares", min_value=0.0, step=1.0)
@@ -46,16 +61,44 @@ with st.sidebar:
         note = st.text_input("Note (optional)")
         submitted_portfolio = st.form_submit_button("Save holding")
         if submitted_portfolio and ticker.strip():
+            symbol = ticker.upper()
+            name = company_name(symbol)
+            ticker_label = f"{symbol} ({name})" if name else symbol
             holding_text = (
-                f"Portfolio holding: {shares} shares of {ticker.upper()} "
+                f"Portfolio holding: {shares} shares of {ticker_label} "
                 f"at ${cost_basis:.2f} cost basis. {note}"
             ).strip()
-            st.session_state.store.add_document(holding_text, source="portfolio")
+            st.session_state.store.add_document(holding_text, source="portfolio", ticker=symbol)
             st.success("Holding saved")
+
+    st.divider()
+    st.caption("Saved notes")
+    if st.session_state.store.documents:
+        for i, doc in enumerate(st.session_state.store.documents):
+            label = doc["text"] if len(doc["text"]) <= 70 else doc["text"][:67] + "..."
+            col1, col2 = st.columns([6, 1])
+            col1.caption(f"[{doc['source']}] {label}")
+            if col2.button("✕", key=f"delete_{i}", help="Remove this note"):
+                st.session_state.store.remove_document(i)
+                st.rerun()
+    else:
+        st.caption("Nothing saved yet.")
+
+    st.divider()
+    st.caption(
+        f"Session usage: {st.session_state.session_tokens:,} tokens, "
+        f"~${st.session_state.session_cost:.4f}"
+    )
 
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.write(message["content"])
+        if message["role"] == "assistant":
+            if message["sources"]:
+                tags = ", ".join(f"{doc['source']} ({doc['score']:.2f})" for doc in message["sources"])
+                st.caption(f"Sources: {tags}")
+            else:
+                st.caption("Not grounded - nothing in your saved notes matched this question.")
 
 question = st.chat_input("Ask about your articles or portfolio...")
 if question:
@@ -64,8 +107,18 @@ if question:
         st.write(question)
 
     context_docs = st.session_state.store.retrieve(question)
-    answer = ask(question, context_docs)
+    result = ask(question, context_docs)
 
-    st.session_state.messages.append({"role": "assistant", "content": answer})
+    st.session_state.session_tokens += result.total_tokens
+    st.session_state.session_cost += result.estimated_cost_usd
+
+    st.session_state.messages.append(
+        {"role": "assistant", "content": result.answer, "sources": context_docs}
+    )
     with st.chat_message("assistant"):
-        st.write(answer)
+        st.write(result.answer)
+        if context_docs:
+            tags = ", ".join(f"{doc['source']} ({doc['score']:.2f})" for doc in context_docs)
+            st.caption(f"Sources: {tags}")
+        else:
+            st.caption("Not grounded - nothing in your saved notes matched this question.")

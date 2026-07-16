@@ -10,6 +10,7 @@ nothing stable to assert against. Just a demo data loader.
 from __future__ import annotations
 
 from rag_store import RagStore
+from ticker_lookup import company_name
 
 # fake portfolio - not my real holdings, just enough spread to make the
 # "what am I exposed to" style questions interesting
@@ -77,8 +78,10 @@ def seed() -> None:
     store = RagStore()
 
     for ticker, shares, cost_basis, note in FAKE_PORTFOLIO:
-        text = f"Portfolio holding: {shares} shares of {ticker} at ${cost_basis:.2f} cost basis. {note}"
-        store.add_document(text, source="portfolio")
+        name = company_name(ticker)
+        ticker_label = f"{ticker} ({name})" if name else ticker
+        text = f"Portfolio holding: {shares} shares of {ticker_label} at ${cost_basis:.2f} cost basis. {note}"
+        store.add_document(text, source="portfolio", ticker=ticker)
 
     for title, url, summary in ARTICLES:
         text = f"{title} ({url}): {summary}"

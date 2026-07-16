@@ -54,8 +54,23 @@ class RagStore:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.path.write_text(json.dumps(self.documents, indent=2), encoding="utf-8")
 
-    def add_document(self, text: str, source: str) -> None:
-        self.documents.append({"text": text, "source": source})
+    def add_document(self, text: str, source: str, ticker: str | None = None) -> None:
+        if source == "portfolio" and ticker:
+            # re-saving a holding for a ticker you already have should update
+            # it in place, not pile up duplicate entries every time you tweak
+            # the share count
+            self.documents = [
+                doc
+                for doc in self.documents
+                if not (doc["source"] == "portfolio" and doc.get("ticker") == ticker)
+            ]
+            self.documents.append({"text": text, "source": source, "ticker": ticker})
+        else:
+            self.documents.append({"text": text, "source": source})
+        self._save()
+
+    def remove_document(self, index: int) -> None:
+        del self.documents[index]
         self._save()
 
     def retrieve(self, query: str, top_k: int = 4) -> list[dict]:
@@ -69,4 +84,10 @@ class RagStore:
         similarities = cosine_similarity(matrix[-1], matrix[:-1])[0]
 
         ranked = sorted(range(len(self.documents)), key=lambda i: similarities[i], reverse=True)
-        return [self.documents[i] for i in ranked[:top_k] if similarities[i] > 0]
+        # score tags along for the groundedness check in the UI - not saved
+        # to disk, just a per-query thing
+        return [
+            {**self.documents[i], "score": float(similarities[i])}
+            for i in ranked[:top_k]
+            if similarities[i] > 0
+        ]
