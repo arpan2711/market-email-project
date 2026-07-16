@@ -4,3 +4,4 @@ streamlit
 scikit-learn
 openai
 python-dotenv
+pypdf
