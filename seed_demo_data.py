@@ -22,6 +22,11 @@ FAKE_PORTFOLIO = [
     ("GOOGL", 20, 135.40, "Search + cloud + Waymo optionality"),
     ("VOO", 30, 410.00, "S&P 500 index fund, core diversification"),
     ("BND", 50, 72.10, "Bond ETF, ballast for the growth names above"),
+    ("AMZN", 12, 178.30, "Cloud (AWS) + e-commerce, added after a pullback"),
+    ("META", 18, 512.00, "Social + AI ad targeting, reinvesting buybacks"),
+    ("AMD", 35, 145.80, "Secondary AI chip bet, hedge against NVDA concentration"),
+    ("SMH", 15, 265.00, "Semiconductor ETF, broad chip exposure beyond single names"),
+    ("VXUS", 40, 62.50, "International index fund, diversification outside the US"),
 ]
 
 # pulled from real July 2026 coverage, condensed - see urls for the source
