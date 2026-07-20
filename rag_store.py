@@ -73,7 +73,7 @@ class RagStore:
         del self.documents[index]
         self._save()
 
-    def retrieve(self, query: str, top_k: int = 4) -> list[dict]:
+    def retrieve(self, query: str, top_k: int = 8) -> list[dict]:
         if not self.documents:
             return []
 
