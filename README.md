@@ -20,11 +20,11 @@ python app.py
 ```
 
 ### `chatbot_app.py` - portfolio & articles chatbot
-A capstone-style RAG chatbot (Streamlit UI, navy theme) backed by DeepSeek. You can save articles (pasted text or PDF upload) and stock portfolio holdings through the sidebar, then ask questions - it retrieves the most relevant saved notes (TF-IDF similarity) and blends them into the answer, citing which notes it used. The sidebar also lists everything you've saved so far, with a one-click delete, and tracks token usage/estimated cost for the session.
+A capstone-style RAG chatbot (Streamlit UI, navy theme) backed by DeepSeek. You can save articles (pasted text or PDF upload) and stock portfolio holdings through the sidebar, then ask questions - it retrieves the most relevant saved notes via real semantic vector search (OpenAI embeddings + a FAISS index, replacing an earlier TF-IDF keyword-overlap approach) and blends them into the answer, citing which notes it used. The sidebar also lists everything you've saved so far, with a one-click delete, and tracks token usage/estimated cost for the session (chat + embeddings combined).
 ```bash
 streamlit run chatbot_app.py
 ```
-Needs a `DEEPSEEK_API_KEY` in a local `.env` file (see `.env.example`).
+Needs a `DEEPSEEK_API_KEY` and an `OPENAI_API_KEY` in a local `.env` file (see `.env.example`) - DeepSeek handles chat, OpenAI handles embeddings (DeepSeek doesn't offer an embeddings endpoint).
 
 Want to try it with something in it right away instead of an empty sidebar? Run:
 ```bash
@@ -52,6 +52,7 @@ Not deployed anywhere yet - [`DEPLOYMENT.md`](DEPLOYMENT.md) has the checklist f
 ## Updates
 
 **Latest:**
+- Swapped the chatbot's retrieval from TF-IDF keyword overlap to real vector search - OpenAI embeddings (`text-embedding-3-small`) cached per note, searched with a FAISS index - so it can match questions phrased differently from the saved text, not just shared keywords. Needs a new `OPENAI_API_KEY` alongside the existing DeepSeek one; embedding cost is folded into the session usage line
 - Grew the demo portfolio from 7 to 12 holdings (added AMZN, META, AMD, SMH, VXUS) to stress-test retrieval with a bigger note set
 - Bumped `RagStore.retrieve`'s `top_k` from 4 to 8 - with more than a handful of saved notes, 4 was cutting off holdings that should've been in scope for broader questions like "am I overweight tech?"
 - Added `DEPLOYMENT.md`, a checklist for deploying to Streamlit Community Cloud (not deployed yet, just ready to go)

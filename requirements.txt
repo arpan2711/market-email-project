@@ -1,7 +1,8 @@
 yfinance
 flask
 streamlit
-scikit-learn
+faiss-cpu
+numpy
 openai
 python-dotenv
 pypdf

@@ -34,6 +34,24 @@ if "session_tokens" not in st.session_state:
     st.session_state.session_tokens = 0
 if "session_cost" not in st.session_state:
     st.session_state.session_cost = 0.0
+if "synced_embedding_tokens" not in st.session_state:
+    st.session_state.synced_embedding_tokens = 0
+if "synced_embedding_cost" not in st.session_state:
+    st.session_state.synced_embedding_cost = 0.0
+
+
+def _sync_embedding_usage() -> None:
+    # store.embedding_tokens/cost are running totals for the store's whole
+    # lifetime (including load-time backfills) - only add the new-since-last-
+    # sync portion to the session counter, not the running total itself
+    store = st.session_state.store
+    st.session_state.session_tokens += store.embedding_tokens - st.session_state.synced_embedding_tokens
+    st.session_state.session_cost += store.embedding_cost_usd - st.session_state.synced_embedding_cost
+    st.session_state.synced_embedding_tokens = store.embedding_tokens
+    st.session_state.synced_embedding_cost = store.embedding_cost_usd
+
+
+_sync_embedding_usage()  # picks up any load-time backfill cost from RagStore._load
 
 with st.sidebar:
     st.header("Add knowledge")
@@ -43,6 +61,7 @@ with st.sidebar:
         submitted_article = st.form_submit_button("Save article")
         if submitted_article and article_text.strip():
             st.session_state.store.add_document(article_text.strip(), source="article")
+            _sync_embedding_usage()
             st.success("Article saved")
 
     pdf_file = st.file_uploader("...or upload a PDF article", type="pdf")
@@ -50,6 +69,7 @@ with st.sidebar:
         pdf_text = extract_pdf_text(pdf_file)
         if pdf_text:
             st.session_state.store.add_document(pdf_text, source="article")
+            _sync_embedding_usage()
             st.success(f"Extracted {len(pdf_text)} characters from {pdf_file.name}")
         else:
             st.warning("Couldn't pull any text out of that PDF - might be a scanned image.")
@@ -69,6 +89,7 @@ with st.sidebar:
                 f"at ${cost_basis:.2f} cost basis. {note}"
             ).strip()
             st.session_state.store.add_document(holding_text, source="portfolio", ticker=symbol)
+            _sync_embedding_usage()
             st.success("Holding saved")
 
     st.divider()
@@ -107,6 +128,7 @@ if question:
         st.write(question)
 
     context_docs = st.session_state.store.retrieve(question)
+    _sync_embedding_usage()
     result = ask(question, context_docs)
 
     st.session_state.session_tokens += result.total_tokens
